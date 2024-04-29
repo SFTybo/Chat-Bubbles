@@ -10,6 +10,7 @@ using System;
 using System.Text;
 using BlendTypeEnum = VRageRender.MyBillboard.BlendTypeEnum;
 using VRage.Utils;
+using CollisionLayers = Sandbox.Engine.Physics.MyPhysics.CollisionLayers;
 
 namespace SFTybo.ChatBubbles
 {
@@ -34,7 +35,8 @@ namespace SFTybo.ChatBubbles
             {
                 if (MyAPIGateway.Session?.Player?.Character != null && hud_base.Heartbeat)
                 {
-                    var charec = MyAPIGateway.Session.Player.Character;
+                    var character = MyAPIGateway.Session.Player.Character;
+                    var control = character as Sandbox.Game.Entities.IMyControllableEntity;
                     var cam_mat = MyAPIGateway.Session.Camera.WorldMatrix;
                     double chatHeight = 0;
 
@@ -43,9 +45,9 @@ namespace SFTybo.ChatBubbles
                         var message = all_messages[i];
                         if (message != null)
                         {
-                            if (i <= 3)
+                            if (i <= 3 && control.EnabledBroadcasting)
                             {
-                                message.WorldPosition = charec.WorldMatrix.Translation + charec.WorldMatrix.Up * chatHeight;
+                                message.WorldPosition = character.WorldMatrix.Translation + character.WorldMatrix.Up * chatHeight;
                             }
                             else
                             {
@@ -96,11 +98,11 @@ namespace SFTybo.ChatBubbles
                     floating_message.Scale = .2 - ((messageScale-1) *.02);
                     double heightScale = (floating_message.Scale-.1) / .1;
                     chatHeight = ((2.0 + ((double)numLines * .25)) * heightScale);
-                    floating_message.WorldPosition = charec.WorldMatrix.Translation + (charec.WorldMatrix.Up * chatHeight);
-                    MyVisualScriptLogicProvider.SendChatMessage(numLines + " lines " + floating_message.Scale + " height: " + chatHeight);
+                    floating_message.WorldPosition = character.WorldMatrix.Translation + (character.WorldMatrix.Up * chatHeight);
+                    //MyVisualScriptLogicProvider.SendChatMessage(numLines + " lines " + floating_message.Scale + " height: " + chatHeight);
                     floating_message.TimeToLive = Clamp(newSentence.ToString().Length*25, 300, 1000);
                     floating_message.TxtOrientation = HudAPIv2.TextOrientation.center;
-                    floating_message.Blend = BlendTypeEnum.PostPP;
+                    floating_message.Blend = BlendTypeEnum.LDR;
 
                     if (billboard != null)
                     {
@@ -151,15 +153,37 @@ namespace SFTybo.ChatBubbles
         {
             if (MyAPIGateway.Session.Camera != null && MyAPIGateway.Session?.Player?.Character != null)
             {
-                var player_mat = MyAPIGateway.Session.Player.Character.WorldMatrix;
+                var character = MyAPIGateway.Session.Player.Character;
+                var player_mat = character.WorldMatrix;
                 var camera_mat = MyAPIGateway.Session.Camera.WorldMatrix;
+                var control = character as Sandbox.Game.Entities.IMyControllableEntity;
                 int lineOffSet = 0;
+                var inCockpit = MyAPIGateway.Session.Player?.Controller?.ControlledEntity is IMyCockpit;
+
+                //Below was for checking if the character was in LOS and the billboard would be set to be always on the front of the screen but haven't found a method
+                //for billboards to do that yet
+                /*List<IHitInfo> _hitList = new List<IHitInfo>();
+                IHitInfo hitInfo = null;
+                MyAPIGateway.Physics.CastRay(MyAPIGateway.Session.Camera.Position, character.GetPosition(), _hitList, CollisionLayers.CharacterCollisionLayer);
+
+                bool seeCharacter = false;
+                for (int i = 0; i < _hitList.Count; i++)
+                {
+                    hitInfo = _hitList[i];
+                    var hit = hitInfo?.HitEntity;
+                    if (hit == character)
+                    {
+                        seeCharacter = true;
+                    }
+                }
+                MyAPIGateway.Utilities.ShowNotification("Can See character " + seeCharacter, 1, "White");*/
+
                 for (int i = 0; i < all_messages.Count; i++)
                 {
                     var message = all_messages[i];
                     if (message != null)
                     {
-                        if (i < 3)
+                        if (i < 3 && control.EnabledBroadcasting && !inCockpit)
                         {
                             int numLines = message.Message.ToString().Split('\n').Length;
                             message.WorldPosition = player_mat.Translation + player_mat.Up * (2 + (numLines * .1) + (lineOffSet * .1) + (i * .25));
