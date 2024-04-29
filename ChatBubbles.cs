@@ -84,7 +84,7 @@ namespace SFTybo.ChatBubbles
         private void registerMessage(ushort ushortId, byte[] messageByte, ulong ulongId, bool reliable)
         {
             packet = MyAPIGateway.Utilities.SerializeFromBinary<Packet>(messageByte);
-            if (packet != null) //&& !MyAPIGateway.Utilities.IsDedicated)
+            if (packet != null && !MyAPIGateway.Utilities.IsDedicated)
             {
                 //MyVisualScriptLogicProvider.SendChatMessage(packet.msg);
                 ulong steamId = (ulong)packet.steamId;
@@ -99,9 +99,12 @@ namespace SFTybo.ChatBubbles
 
         public override void Init(MyObjectBuilder_SessionComponent sessionComponent)
         {
-            MyAPIGateway.Utilities.MessageEntered += Utilities_MessageEntered;
-            //MyAPIGateway.Utilities.MessageRecieved += Utilities_MessageRecieved;
-            MyAPIGateway.Multiplayer.RegisterSecureMessageHandler(id, registerMessage);
+            if (!MyAPIGateway.Utilities.IsDedicated)
+            {
+                MyAPIGateway.Utilities.MessageEntered += Utilities_MessageEntered;
+                //MyAPIGateway.Utilities.MessageRecieved += Utilities_MessageRecieved;
+                MyAPIGateway.Multiplayer.RegisterSecureMessageHandler(id, registerMessage);
+            }
         }
 
         private void createMessage(string messageText, IMyCharacter character, ulong steamId)
@@ -260,68 +263,71 @@ namespace SFTybo.ChatBubbles
 
         public override void Draw()
         {
-            if (MyAPIGateway.Session.Camera != null)
+            if (!MyAPIGateway.Utilities.IsDedicated)
             {
-                foreach (var msgPack in _msgsList)
+                if (MyAPIGateway.Session.Camera != null && !MyAPIGateway.Utilities.IsDedicated)
                 {
-                    IMyPlayer sentPlayer = getPlayer((ulong)msgPack.steamId);
-                    if (sentPlayer != null)
+                    foreach (var msgPack in _msgsList)
                     {
-                        var character = sentPlayer.Character;
-                        var player_mat = character.WorldMatrix;
-                        var camera_mat = MyAPIGateway.Session.Camera.WorldMatrix;
-                        var control = character as Sandbox.Game.Entities.IMyControllableEntity;
-                        int lineOffSet = 0;
-                        var inCockpit = sentPlayer.Controller?.ControlledEntity is IMyCockpit;
-
-                        //Below was for checking if the character was in LOS and the billboard would be set to be always on the front of the screen but haven't found a method
-                        //for billboards to do that yet
-                        /*List<IHitInfo> _hitList = new List<IHitInfo>();
-                        IHitInfo hitInfo = null;
-                        MyAPIGateway.Physics.CastRay(MyAPIGateway.Session.Camera.Position, character.GetPosition(), _hitList, CollisionLayers.CharacterCollisionLayer);
-
-                        bool seeCharacter = false;
-                        for (int i = 0; i < _hitList.Count; i++)
+                        IMyPlayer sentPlayer = getPlayer((ulong)msgPack.steamId);
+                        if (sentPlayer != null)
                         {
-                            hitInfo = _hitList[i];
-                            var hit = hitInfo?.HitEntity;
-                            if (hit == character)
+                            var character = sentPlayer.Character;
+                            var player_mat = character.WorldMatrix;
+                            var camera_mat = MyAPIGateway.Session.Camera.WorldMatrix;
+                            var control = character as Sandbox.Game.Entities.IMyControllableEntity;
+                            int lineOffSet = 0;
+                            var inCockpit = sentPlayer.Controller?.ControlledEntity is IMyCockpit;
+
+                            //Below was for checking if the character was in LOS and the billboard would be set to be always on the front of the screen but haven't found a method
+                            //for billboards to do that yet
+                            /*List<IHitInfo> _hitList = new List<IHitInfo>();
+                            IHitInfo hitInfo = null;
+                            MyAPIGateway.Physics.CastRay(MyAPIGateway.Session.Camera.Position, character.GetPosition(), _hitList, CollisionLayers.CharacterCollisionLayer);
+
+                            bool seeCharacter = false;
+                            for (int i = 0; i < _hitList.Count; i++)
                             {
-                                seeCharacter = true;
+                                hitInfo = _hitList[i];
+                                var hit = hitInfo?.HitEntity;
+                                if (hit == character)
+                                {
+                                    seeCharacter = true;
+                                }
                             }
-                        }
-                        MyAPIGateway.Utilities.ShowNotification("Can See character " + seeCharacter, 1, "White");*/
-                        //GetPlayers(List<IMyPlayer>);
-                        for (int i = 0; i < msgPack.all_other_messages.Count; i++)
-                        {
-                            var message = msgPack.all_other_messages[i];
-                            if (message != null)
+                            MyAPIGateway.Utilities.ShowNotification("Can See character " + seeCharacter, 1, "White");*/
+                            //GetPlayers(List<IMyPlayer>);
+                            for (int i = 0; i < msgPack.all_other_messages.Count; i++)
                             {
-                                if (i < 3 && control.EnabledBroadcasting && !inCockpit)
+                                var message = msgPack.all_other_messages[i];
+                                if (message != null)
                                 {
-                                    int numLines = message.Message.ToString().Split('\n').Length;
-                                    message.WorldPosition = player_mat.Translation + player_mat.Up * (2 + (numLines * .1) + (lineOffSet * .1) + (i * .25));
-                                    lineOffSet += numLines;
-                                    message.Up = camera_mat.Up;
-                                    message.Left = camera_mat.Left;
-                                }
-                                else
-                                {
-                                    message.Visible = false;
-                                }
-                                if (billboard != null)
-                                {
-                                    Vector3D world_p = message.WorldPosition;
-                                    Vector3D screen = MyAPIGateway.Session.Camera.WorldToScreen(ref world_p);
-                                    billboard.Origin = new Vector2D(screen.X, screen.Y);
-                                    double distance = Distance(world_p, screen);
-                                    if (distance <= 50)
+                                    if (i < 3 && control.EnabledBroadcasting && !inCockpit)
                                     {
-                                        billboard.Scale = 0.2f;
+                                        int numLines = message.Message.ToString().Split('\n').Length;
+                                        message.WorldPosition = player_mat.Translation + player_mat.Up * (2 + (numLines * .1) + (lineOffSet * .1) + (i * .25));
+                                        lineOffSet += numLines;
+                                        message.Up = camera_mat.Up;
+                                        message.Left = camera_mat.Left;
                                     }
                                     else
                                     {
-                                        billboard.Scale = 0;
+                                        message.Visible = false;
+                                    }
+                                    if (billboard != null)
+                                    {
+                                        Vector3D world_p = message.WorldPosition;
+                                        Vector3D screen = MyAPIGateway.Session.Camera.WorldToScreen(ref world_p);
+                                        billboard.Origin = new Vector2D(screen.X, screen.Y);
+                                        double distance = Distance(world_p, screen);
+                                        if (distance <= 50)
+                                        {
+                                            billboard.Scale = 0.2f;
+                                        }
+                                        else
+                                        {
+                                            billboard.Scale = 0;
+                                        }
                                     }
                                 }
                             }
@@ -333,13 +339,16 @@ namespace SFTybo.ChatBubbles
 
         protected override void UnloadData()
         {
-            if (hud_base != null)
+            if (!MyAPIGateway.Utilities.IsDedicated)
             {
-                hud_base.Unload();
+                if (hud_base != null)
+                {
+                    hud_base.Unload();
+                }
+                MyAPIGateway.Multiplayer.UnregisterSecureMessageHandler(id, registerMessage);
+                MyAPIGateway.Utilities.MessageEntered -= Utilities_MessageEntered;
+                //MyAPIGateway.Utilities.MessageRecieved -= Utilities_MessageRecieved;
             }
-            MyAPIGateway.Multiplayer.UnregisterSecureMessageHandler(id, registerMessage);
-            MyAPIGateway.Utilities.MessageEntered -= Utilities_MessageEntered;
-            //MyAPIGateway.Utilities.MessageRecieved -= Utilities_MessageRecieved;
         }
     }
 }
