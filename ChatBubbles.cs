@@ -211,8 +211,8 @@ namespace SFTybo.ChatBubbles
                 {
                     packet.steamId = (long)MyAPIGateway.Session?.Player?.SteamUserId;
                     packet.msg = messageText;
-                    MyAPIGateway.Multiplayer.SendMessageToServer(id, MyAPIGateway.Utilities.SerializeToBinary(packet), true);
-                    //createMessage(messageText, MyAPIGateway.Session?.Player?.Character);
+                    MyAPIGateway.Multiplayer.SendMessageToOthers(id, MyAPIGateway.Utilities.SerializeToBinary(packet), true);
+                    createMessage(messageText, MyAPIGateway.Session?.Player?.Character, MyAPIGateway.Session.Player.SteamUserId);
                 }
             }
         }
